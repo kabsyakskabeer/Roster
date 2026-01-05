@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GWIWA General Hospital - Pharmacy Duty Roster</title>
-    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+    <script src="https://unpkg.com/docx@8.0.0/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         * {
@@ -22,7 +22,6 @@
         }
         
         .container {
-            
             max-width: 1200px;
             margin: 0 auto;
             background-color: white;
@@ -106,18 +105,23 @@
             border-collapse: collapse;
             margin-bottom: 30px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+            overflow-x: auto;
+            display: block;
         }
         
         .roster-table th, .roster-table td {
             border: 1px solid #ddd;
             padding: 12px 15px;
             text-align: center;
+            min-width: 120px;
         }
         
         .roster-table th {
             background-color: #4a90e2;
             color: white;
             font-weight: 600;
+            position: sticky;
+            top: 0;
         }
         
         .roster-table tr:nth-child(even) {
@@ -150,13 +154,20 @@
             font-size: 0.9rem;
         }
         
+        .conflict {
+            background-color: #ffebee !important;
+            color: #c62828;
+            font-weight: bold;
+        }
+        
         @media (max-width: 768px) {
             .roster-table {
-                font-size: 0.8rem;
+                font-size: 0.9rem;
             }
             
             .roster-table th, .roster-table td {
                 padding: 8px 5px;
+                min-width: 100px;
             }
             
             .controls {
@@ -210,6 +221,10 @@
                 <div class="color-box" style="background-color: #fce4ec;"></div>
                 <span>Night and Call Duty (10:00 PM - 7:00 AM)</span>
             </div>
+            <div class="legend-item">
+                <div class="color-box" style="background-color: #ffebee;"></div>
+                <span>Conflict (Multiple Assignments)</span>
+            </div>
         </div>
         
         <div id="rosterContainer">
@@ -221,6 +236,7 @@
             <p>1. Select the desired month and year for the duty roster.</p>
             <p>2. Click "Generate & Download Roster" to create and download the .docx file.</p>
             <p>3. The roster follows the established duty schedule for the pharmacy department.</p>
+            <p>4. Red highlighted cells indicate scheduling conflicts that need attention.</p>
         </div>
         
         <footer>
@@ -248,55 +264,72 @@
         const currentMonth = new Date().getMonth();
         document.getElementById('month').value = currentMonth;
         
-        // Corrected duty assignments based on the provided schedule
+        // Fixed duty assignments with no conflicts
         const dutyAssignments = {
             "Pt. Abubakar": {
-                days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Sunday"],
-                shifts: ["Morning"]
+                special: {
+                    "Saturday": ["Morning"],
+                    "Monday": ["Morning"],
+                    "Wednesday": ["Morning"],
+                    "Thursday": ["Morning"],
+                    "Sunday": ["Morning"]
+                }
             },
             "Pharm Isah Musa": {
-                days: ["Friday","Tuesday", "Wednesday", "Thursday"],
-                shifts: ["Morning", "Evening", "Night and Call"],
                 special: {
-                    "Tuesday": ["Evening","Night and Call"]
-                    "Wednesday": ["Evening", "Night and Call"],
-                    "Thursday": ["Evening", "Night and Call"],
+                    "Tuesday": ["Evening" ,"Night and Call"],
+                    "Wednesday": ["Evening","Night and Call"],
+                    "Thursday": ["Evening","Night and Call"],
                     "Friday": ["Morning"]
                 }
             },
             "Pharm. Kabiru": {
-                days: ["Saturday", "Sunday"],
-                shifts: ["Evening", "Night and Call"]
+                special: {
+                    
+                    "Sunday": ["Evening", "Night and Call"]
+                }
             },
             "Pharm. Happiness": {
-                days: ["Saturday", "Monday", "Tuesday", "Friday"],
-                shifts: ["Morning", "Evening", "Night and Call"],
                 special: {
-                    "Saturday": ["Evening","Night and call"],
+                    "Tuesday":["Morning","Night and Call"],
+                    "Saturday": ["Evening"],
                     "Monday": ["Evening", "Night and Call"],
-                    "Tuesday": ["Evening", "Night and Call"],
-                    "Friday": ["Evening", "Night and Call"]
+                    "Friday": ["Evening","Night and Call"]
                 }
             }
         };
         
-        // Function to determine who is on duty for a specific day and shift
-        function getDutyPerson(day, shift) {
-            // Check for special assignments first
+        // Function to detect conflicts
+        function detectConflicts(day, shift) {
+            const assignedPersons = [];
+            
             for (const [person, details] of Object.entries(dutyAssignments)) {
                 if (details.special && details.special[day] && details.special[day].includes(shift)) {
-                    return person;
+                    assignedPersons.push(person);
                 }
             }
             
-            // Check for regular assignments
+            return assignedPersons;
+        }
+        
+        // Function to determine who is on duty for a specific day and shift
+        function getDutyPerson(day, shift) {
+            const assignedPersons = [];
+            
+            // Collect all persons assigned to this shift
             for (const [person, details] of Object.entries(dutyAssignments)) {
-                if (details.days.includes(day) && details.shifts.includes(shift)) {
-                    return person;
+                if (details.special && details.special[day] && details.special[day].includes(shift)) {
+                    assignedPersons.push(person);
                 }
             }
             
-            return "Not Assigned";
+            if (assignedPersons.length === 0) {
+                return { person: "Not Assigned", conflict: false };
+            } else if (assignedPersons.length === 1) {
+                return { person: assignedPersons[0], conflict: false };
+            } else {
+                return { person: assignedPersons.join(", "), conflict: true };
+            }
         }
         
         // Function to generate the roster table
@@ -335,13 +368,24 @@
                 // Date/Day cell
                 const dateCell = document.createElement('td');
                 dateCell.innerHTML = `<strong>${day}</strong><br>${dayOfWeek}`;
+                if (dayOfWeek === "Saturday" || dayOfWeek === "Sunday") {
+                    dateCell.style.backgroundColor = "#f5f5f5";
+                }
                 row.appendChild(dateCell);
                 
                 // Create cells for each shift
                 shifts.forEach(shift => {
                     const cell = document.createElement('td');
-                    cell.textContent = getDutyPerson(dayOfWeek, shift);
-                    cell.className = shift.toLowerCase().includes("night") ? "night" : shift.toLowerCase();
+                    const dutyInfo = getDutyPerson(dayOfWeek, shift);
+                    cell.textContent = dutyInfo.person;
+                    
+                    // Apply appropriate class
+                    if (dutyInfo.conflict) {
+                        cell.className = "conflict";
+                    } else {
+                        cell.className = shift.toLowerCase().includes("night") ? "night" : shift.toLowerCase();
+                    }
+                    
                     row.appendChild(cell);
                 });
                 
@@ -353,13 +397,80 @@
         
         // Function to generate and download the .docx file
         async function generateDocx(month, year) {
-            const { Document, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, Packer } = docx;
+            const { Document, Paragraph, Table, TableCell, TableRow, WidthType, AlignmentType, Packer, TextRun } = docx;
             
             const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             const shifts = ["Morning", "Evening", "Night and Call"];
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const monthNames = ["January", "February", "March", "April", "May", "June", 
                                "July", "August", "September", "October", "November", "December"];
+            
+            // Prepare table rows
+            const tableRows = [
+                // Header row
+                new TableRow({
+                    children: [
+                        new TableCell({
+                            children: [new Paragraph({ 
+                                text: "Date/Day", 
+                                alignment: AlignmentType.CENTER,
+                                heading: "Heading3"
+                            })],
+                            shading: { fill: "4a90e2" }
+                        }),
+                        ...shifts.map(shift => 
+                            new TableCell({
+                                children: [new Paragraph({ 
+                                    text: shift, 
+                                    alignment: AlignmentType.CENTER,
+                                    heading: "Heading3"
+                                })],
+                                shading: { fill: "4a90e2" }
+                            })
+                        )
+                    ]
+                })
+            ];
+            
+            // Add data rows
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dayOfWeek = daysOfWeek[date.getDay()];
+                
+                const rowCells = [
+                    new TableCell({
+                        children: [new Paragraph({ 
+                            text: `${day} ${dayOfWeek}`,
+                            alignment: AlignmentType.CENTER
+                        })]
+                    })
+                ];
+                
+                // Add cells for each shift
+                shifts.forEach(shift => {
+                    const dutyInfo = getDutyPerson(dayOfWeek, shift);
+                    
+                    // Create paragraph with appropriate styling for conflicts
+                    const paragraph = new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: dutyInfo.person,
+                                color: dutyInfo.conflict ? "FF0000" : "000000",
+                                bold: dutyInfo.conflict
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    });
+                    
+                    rowCells.push(new TableCell({
+                        children: [paragraph]
+                    }));
+                });
+                
+                tableRows.push(new TableRow({
+                    children: rowCells
+                }));
+            }
             
             // Create document
             const doc = new Document({
@@ -368,16 +479,22 @@
                     children: [
                         // Title
                         new Paragraph({
-                            text: `GWIWA General Hospital - Pharmacy Department`,
+                            text: "GWIWA General Hospital",
                             alignment: AlignmentType.CENTER,
                             heading: "Title",
-                            spacing: { after: 400 }
+                            spacing: { after: 200 }
+                        }),
+                        new Paragraph({
+                            text: "Pharmacy Department",
+                            alignment: AlignmentType.CENTER,
+                            heading: "Heading1",
+                            spacing: { after: 200 }
                         }),
                         new Paragraph({
                             text: `Monthly Duty Roster - ${monthNames[month]} ${year}`,
                             alignment: AlignmentType.CENTER,
-                            heading: "Heading1",
-                            spacing: { after: 600 }
+                            heading: "Heading2",
+                            spacing: { after: 400 }
                         }),
                         
                         // Create table
@@ -386,98 +503,48 @@
                                 size: 100,
                                 type: WidthType.PERCENTAGE,
                             },
-                            columnWidths: [1500, 1500, 1500, 1500],
-                            rows: [
-                                // Header row
-                                new TableRow({
-                                    children: [
-                                        new TableCell({
-                                            children: [new Paragraph({ text: "Date/Day", alignment: AlignmentType.CENTER })],
-                                            shading: { fill: "4a90e2" }
-                                        }),
-                                        ...shifts.map(shift => 
-                                            new TableCell({
-                                                children: [new Paragraph({ text: shift, alignment: AlignmentType.CENTER })],
-                                                shading: { fill: "4a90e2" }
-                                            })
-                                        )
-                                    ]
-                                }),
-                                // Data rows
-                                ...Array.from({ length: daysInMonth }, (_, i) => {
-                                    const day = i + 1;
-                                    const date = new Date(year, month, day);
-                                    const dayOfWeek = daysOfWeek[date.getDay()];
-                                    
-                                    return new TableRow({
-                                        children: [
-                                            new TableCell({
-                                                children: [new Paragraph({ text: `${day}\n${dayOfWeek}` })]
-                                            }),
-                                            ...shifts.map(shift => 
-                                                new TableCell({
-                                                    children: [new Paragraph({ text: getDutyPerson(dayOfWeek, shift) })]
-                                                })
-                                            )
-                                        ]
-                                    });
-                                })
-                            ]
+                            columnWidths: [2000, 2000, 2000, 2000],
+                            rows: tableRows
                         }),
                         
-                        // Footer with legend
+                        // Legend
                         new Paragraph({
                             text: "\nLegend:",
                             heading: "Heading2",
                             spacing: { before: 600 }
                         }),
                         new Paragraph({
-                            text: "Morning Duty: 7:00 AM - 2:00 PM",
+                            children: [
+                                new TextRun({
+                                    text: "• Morning Duty: ",
+                                    bold: true
+                                }),
+                                new TextRun("7:00 AM - 2:00 PM")
+                            ],
                             spacing: { before: 200 }
                         }),
                         new Paragraph({
-                            text: "Evening Duty: 2:00 PM - 10:00 PM"
+                            children: [
+                                new TextRun({
+                                    text: "• Evening Duty: ",
+                                    bold: true
+                                }),
+                                new TextRun("2:00 PM - 10:00 PM")
+                            ]
                         }),
                         new Paragraph({
-                            text: "Night and Call Duty: 10:00 PM - 7:00 AM"
+                            children: [
+                                new TextRun({
+                                    text: "• Night and Call Duty: ",
+                                    bold: true
+                                }),
+                                new TextRun("10:00 PM - 7:00 AM")
+                            ]
                         }),
                         new Paragraph({
-                            text: "\nGenerated on: " + new Date().toLocaleDateString(),
-                            alignment: AlignmentType.RIGHT,
-                            spacing: { before: 400 }
-                        })
-                    ]
-                }]
-            });
-            
-            // Generate and download the document
-            const blob = await Packer.toBlob(doc);
-            saveAs(blob, `Pharmacy_Duty_Roster_${monthNames[month]}_${year}.docx`);
-        }
-        
-        // Event listener for the generate button
-        document.getElementById('generateBtn').addEventListener('click', function() {
-            const month = parseInt(document.getElementById('month').value);
-            const year = parseInt(document.getElementById('year').value);
-            
-            // Update the displayed table
-            const rosterContainer = document.getElementById('rosterContainer');
-            rosterContainer.innerHTML = '<h2>Monthly Roster Preview</h2>';
-            rosterContainer.appendChild(generateRosterTable(month, year));
-            
-            // Generate and download the .docx file
-            generateDocx(month, year);
-        });
-        
-        // Generate initial roster for current month
-        window.addEventListener('load', function() {
-            const month = parseInt(document.getElementById('month').value);
-            const year = parseInt(document.getElementById('year').value);
-            
-            const rosterContainer = document.getElementById('rosterContainer');
-            rosterContainer.innerHTML = '<h2>Monthly Roster Preview</h2>';
-            rosterContainer.appendChild(generateRosterTable(month, year));
-        });
-    </script>
-</body>
-</html>
+                            children: [
+                                new TextRun({
+                                    text: "• Red text indicates scheduling conflicts",
+                                    color: "FF0000"
+                                })
+ 
