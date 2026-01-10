@@ -251,22 +251,31 @@
         // Corrected duty assignments based on the provided schedule
         const dutyAssignments = {
             "Pt. Abubakar": {
-                days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Sunday"],
-                shifts: ["Morning"]
+                days: ["Monday", "Tuesday", "Saturday", "Sunday","thursday"],
+                shifts: ["Morning","Evening"],
+                special: {
+                    
+                    "Thursday": ["Evening"],
+                    "Saturday": ["Morning"]
+                }
             },
             "Pharm Isah Musa": {
                 days: ["Friday", "Tuesday", "Wednesday", "Thursday"],
                 shifts: ["Morning", "Evening", "Night and Call"],
                 special: {
                     "Tuesday": ["Evening","Night and Call"],
-                    "Wednesday": ["Evening", "Night and Call"],
-                    "Thursday": ["Evening", "Night and Call"],
+                    "Wednesday": ["Morning", "Night and Call"],
+                    "Thursday": ["Morning", "Night and Call"],
                     "Friday": ["Morning"]
                 }
             },
             "Pharm. Kabiru": {
                 days: [ "Sunday"],
-                shifts: ["Evening", "Night and Call"]
+                shifts: ["Evening", "Night and Call"],
+                special: {
+                    "Sunday": ["Evening","Night and Call"]
+                   
+                }
             },
             "Pharm. Happiness": {
                 days: ["Saturday", "Monday", "Tuesday", "Friday"],
@@ -275,6 +284,7 @@
                     "Saturday": ["Evening", "Night and Call"],
                     "Monday": ["Evening", "Night and Call"],
                     "Tuesday": ["Evening"],
+                    "Wednesday": ["Evening"],
                     "Friday": ["Evening", "Night and Call"]
                 }
             }
