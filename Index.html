@@ -251,12 +251,11 @@
         // Corrected duty assignments based on the provided schedule
         const dutyAssignments = {
             "Pt. Abubakar": {
-                days: ["Monday", "Tuesday", "Saturday", "Sunday","thursday"],
+                days: ["Monday", "Tuesday", "Sunday","thursday"],
                 shifts: ["Morning","Evening"],
                 special: {
                     
-                    "Thursday": ["Evening"],
-                    "Saturday": ["Morning"]
+                    "Thursday": ["Evening"]
                 }
             },
             "Pharm Isah Musa": {
@@ -270,10 +269,11 @@
                 }
             },
             "Pharm. Kabiru": {
-                days: [ "Sunday"],
+                days: [ "saturday","Sunday"],
                 shifts: ["Evening", "Night and Call"],
                 special: {
-                    "Sunday": ["Evening","Night and Call"]
+                    "Sunday": ["Evening","Night and Call"],
+                    "Saturday": ["Morning","Night and Call"]
                    
                 }
             },
